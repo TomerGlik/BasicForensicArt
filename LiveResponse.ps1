@@ -1,61 +1,82 @@
-# LiveResponse.ps1
-$OutputDir = "C:\Forensics\$(Get-Date -Format yyyy-MM-dd_HH-mm-ss)"
-New-Item -ItemType Directory -Force -Path $OutputDir
+# ==============================
+# Tomer Glik - Live Response Script for Windows Endpoints
+# ==============================
 
-# System Info
-systeminfo > "$OutputDir\systeminfo.txt"
-hostname > "$OutputDir\hostname.txt"
-whoami /all > "$OutputDir\whoami.txt"
-Get-Date > "$OutputDir\current_time.txt"
+$now = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$collectionDir = "C:\Forensics\$now"
+New-Item -Path $collectionDir -ItemType Directory -Force | Out-Null
 
-# Running Processes
-tasklist /V > "$OutputDir\tasklist.txt"
-Get-Process | Sort-Object CPU -Descending | Out-File "$OutputDir\Get-Process.txt"
+function Write-Step {
+    param ([string]$text)
+    $timestamp = Get-Date -Format "HH:mm:ss"
+    Write-Host "[$timestamp] $text" -ForegroundColor Yellow
+}
 
-# Network Connections
-netstat -ano > "$OutputDir\netstat.txt"
-Get-NetTCPConnection | Out-File "$OutputDir\TCPConnections.txt"
+function Show-Progress {
+    param (
+        [int]$index,
+        [int]$total,
+        [string]$name,
+        [datetime]$started
+    )
+    $percent = [math]::Round(($index / $total) * 100)
+    $barLength = 30
+    $done = [math]::Floor($percent * $barLength / 100)
+    $progressBar = ('=' * $done).PadRight($barLength, '-')
+    $elapsed = (Get-Date) - $started
+    $eta = if ($index -gt 0) {
+        [TimeSpan]::FromSeconds(($elapsed.TotalSeconds / $index) * ($total - $index))
+    } else {
+        [TimeSpan]::Zero
+    }
+    $line = "`r[$($elapsed.ToString("hh\:mm\:ss"))] Processing $name".PadRight(40) + "[$progressBar] $percent% ETA: $($eta.ToString("mm\:ss"))"
+    Write-Host $line -NoNewline -ForegroundColor Cyan
+}
 
-# Services
-Get-Service | Where-Object {$_.Status -eq 'Running'} | Out-File "$OutputDir\Services.txt"
+Write-Host "`n[+] Starting data collection - $now" -ForegroundColor Green
 
-# Scheduled Tasks
-schtasks /query /fo LIST /v > "$OutputDir\ScheduledTasks.txt"
+# Basic account info
+Write-Step "Gathering user and group info..."
+net user > "$collectionDir\users.txt"
+net localgroup > "$collectionDir\localgroups.txt"
+net accounts > "$collectionDir\net_accounts.txt"
 
-# Installed Software
-Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* |
-Select-Object DisplayName, DisplayVersion, Publisher, InstallDate |
-Out-File "$OutputDir\InstalledPrograms.txt"
+# Event logs
+Write-Step "Exporting last 50 security/system/application logs..."
+Get-WinEvent -LogName Security -MaxEvents 50 | Out-File "$collectionDir\SecurityLog.txt"
+Get-WinEvent -LogName System -MaxEvents 50 | Out-File "$collectionDir\SystemLog.txt"
+Get-WinEvent -LogName Application -MaxEvents 50 | Out-File "$collectionDir\ApplicationLog.txt"
 
-# Startup Entries
-Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location |
-Out-File "$OutputDir\StartupItems.txt"
+# Drivers
+Write-Step "Collecting driver list..."
+driverquery /V > "$collectionDir\Drivers.txt"
 
-# Users and Groups
-net user > "$OutputDir\users.txt"
-net localgroup > "$OutputDir\localgroups.txt"
-net accounts > "$OutputDir\net_accounts.txt"
-
-# Event Logs (last 1000 events)
-Get-WinEvent -LogName Security -MaxEvents 1000 | Out-File "$OutputDir\SecurityLog.txt"
-Get-WinEvent -LogName System -MaxEvents 1000 | Out-File "$OutputDir\SystemLog.txt"
-Get-WinEvent -LogName Application -MaxEvents 1000 | Out-File "$OutputDir\ApplicationLog.txt"
-
-# Running Drivers
-driverquery /V > "$OutputDir\Drivers.txt"
-
-# Save Hashes of Files in Downloads/Desktop/Temp
-$paths = @("$env:USERPROFILE\Downloads", "$env:USERPROFILE\Desktop", "$env:TEMP")
-foreach ($path in $paths) {
-    if (Test-Path $path) {
-        Get-ChildItem -Recurse -File -Path $path -ErrorAction SilentlyContinue |
-        ForEach-Object {
-            $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($hash.Hash) $($_.FullName)" | Out-File "$OutputDir\file_hashes.txt" -Append
-        }
+# Hashing files
+Write-Step "Hashing files from Downloads, Desktop and Temp folders..."
+$dirsToHash = @("$env:USERPROFILE\Downloads", "$env:USERPROFILE\Desktop", "$env:TEMP")
+$files = @()
+foreach ($dir in $dirsToHash) {
+    if (Test-Path $dir) {
+        $files += Get-ChildItem -Recurse -File -Path $dir -ErrorAction SilentlyContinue
     }
 }
 
-# Zip the folder
-Compress-Archive -Path $OutputDir -DestinationPath "$OutputDir.zip"
-Write-Output "Live response collection completed. Output saved to: $OutputDir.zip"
+$totalFiles = $files.Count
+$startTimer = Get-Date
+$count = 0
+
+foreach ($file in $files) {
+    $count++
+    Show-Progress -index $count -total $totalFiles -name $file.Name -started $startTimer
+    try {
+        $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+        "$($hash.Hash) $($file.FullName)" | Out-File "$collectionDir\hashes.txt" -Append
+    } catch {
+        Write-Warning "Couldn't hash: $($file.FullName)"
+    }
+}
+Write-Host ""
+
+# Zipping everything
+Compress-Archive -Path $collectionDir -DestinationPath "$collectionDir.zip"
+Write-Host "`n[+] Done! Output archived to: $collectionDir.zip" -ForegroundColor Green
