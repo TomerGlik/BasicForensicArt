@@ -1,6 +1,6 @@
 # 🕵️‍♂️ BasicForensicArt
 
-PowerShell-based live response tool I built to help automate basic forensic data collection from Windows endpoints. נוצר מתוך צורך אישי שלי ככלי עזר בחקירות ואירועי IR.
+PowerShell-based live response tool I built to help automate basic forensic data collection from Windows endpoints.
 
 ---
 
