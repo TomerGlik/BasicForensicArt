@@ -1,43 +1,60 @@
-# BasicForensicArt
+# 🕵️‍♂️ BasicForensicArt
 
-## ⚠️ Notes
-
-- **Run as Administrator** to ensure full access to system data.
-- The script does **not** modify any system state – it only reads and saves data.
-- This is **not** a RAM dumper. For memory capture, use tools like [Magnet RAM Capture](https://www.magnetforensics.com/resources/magnet-ram-capture/).
-- Recommended for use in triage, threat hunting, or when IR teams need fast visibility.
-
-## 🧠 Tip for Use
-
-Copy this script to a USB drive or incident response toolkit folder. After running it, you’ll get a `.zip` file with all the findings ready for offline analysis.
+PowerShell-based live response tool I built to help automate basic forensic data collection from Windows endpoints. נוצר מתוך צורך אישי שלי ככלי עזר בחקירות ואירועי IR.
 
 ---
 
-# 🛡️ Windows Live Response Script
+## ⚠️ Notes
 
-This PowerShell script helps collect essential forensic artifacts from a Windows machine during incident response or threat investigations. It’s designed for security analysts, SOC teams, and DFIR professionals who need a quick and reliable way to gather live data from a potentially compromised system.
+- Please run **as Administrator** – script reads logs, drivers, and registry info that require elevated access.
+- Nothing gets modified – it’s a read-only process that outputs to a zip archive.
+- Not designed for RAM captures. Use tools like [Magnet RAM Capture](https://www.magnetforensics.com/resources/magnet-ram-capture/) for memory acquisition.
+- Works great in triage, threat hunting, or "grab-and-go" IR cases where visibility is limited.
 
-## 🔍 What It Does
+---
 
-The script collects key information such as:
+## 🧠 Why I Made It
 
-- System details (hostname, time, users, accounts)
-- Running processes and network connections
-- Scheduled tasks and startup entries
-- Installed software
-- Active services and drivers
-- Event logs (Security, System, Application)
-- File hashes from `Downloads`, `Desktop`, and `Temp` folders
+After multiple incidents where we needed quick context from a compromised system – without spending time collecting each piece manually – I decided to script it. The goal: fast, consistent, and lightweight.
 
-All output is saved into a timestamped folder and compressed into a `.zip` archive for easy transfer or analysis.
+---
 
-## 📂 Output Example
+## 💻 What It Collects
 
+The script grabs:
+
+- System details: hostname, users, time, local groups
+- Network connections + process list
+- Scheduled tasks & startup entries
+- Installed applications
+- Active services & drivers
+- Security, System, and Application logs (last 50–1000 events)
+- SHA256 file hashes from:
+  - `Downloads`
+  - `Desktop`
+  - `Temp`
+
+All output is stored in a timestamped folder, then zipped for easy upload or transfer.
+
+---
+
+## 🧪 Sample Output
 C:\Forensics\2025-05-06_13-45-00
 ├── systeminfo.txt
 ├── netstat.txt
 ├── ScheduledTasks.txt
 ├── StartupItems.txt
 ├── SecurityLog.txt
-├── ...
-└── file_hashes.txt
+├── file_hashes.txt
+└── ...
+
+## 🚀 Usage
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process
+.\LiveResponse.ps1
+Plug in your USB stick, run it, wait a few minutes, and boom — zipped artifacts ready for analysis.
+
+🧊 Final Word
+This was built by a security analyst for security analysts. Feel free to fork, tweak, and adapt.
+If it helped you — I’d love to hear how.
