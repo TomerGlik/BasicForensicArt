@@ -15,7 +15,8 @@ PowerShell-based live response tool I built to help automate basic forensic data
 
 ## 🧠 Why I Made It
 
-After multiple incidents where we needed quick context from a compromised system – without spending time collecting each piece manually – I decided to script it. The goal: fast, consistent, and lightweight.
+This project was born out of a personal drive to learn and grow.  
+It started as an idea from my manager, aimed at helping me strengthen my cybersecurity skills and demonstrate determination through hands-on experience.
 
 ---
 
@@ -39,20 +40,21 @@ All output is stored in a timestamped folder, then zipped for easy upload or tra
 ---
 
 ## 🧪 Sample Output
-C:\Forensics\2025-05-06_13-45-00
-├── systeminfo.txt
-├── netstat.txt
-├── ScheduledTasks.txt
-├── StartupItems.txt
-├── SecurityLog.txt
-├── file_hashes.txt
-└── ...
+C:\Forensics\ --Date Format--
+- systeminfo.txt
+- netstat.txt
+- ScheduledTasks.txt
+- StartupItems.txt
+- SecurityLog.txt
+- file_hashes.txt
+- ...
 
 ## 🚀 Usage
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process
 .\LiveResponse.ps1
+```
 Plug in your USB stick, run it, wait a few minutes, and boom — zipped artifacts ready for analysis.
 
 🧊 Final Word
